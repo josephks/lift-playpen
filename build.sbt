@@ -1,9 +1,9 @@
 /** Project */
-name := "Lift SBT Template"
+name := "Lift Playpen"
 
 version := "0.1"
 
-organization := "Lift"
+organization := "net.tupari"
 
 scalaVersion := "2.9.1"
 
