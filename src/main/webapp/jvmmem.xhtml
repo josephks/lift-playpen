@@ -1,0 +1,35 @@
+<lift:children>
+
+            <div class="lift:surround?with=default;at=content">
+                <head><title>Memory Info for this web server </title>
+<style type="text/css">
+.numbers{
+text-align:right;
+}
+
+</style>
+   </head>
+
+                   <lift:Comet type="JvmMemActor" randomname="true"  >
+
+<span class="refreshbutton" />
+
+<table width="90%" align="center" border="1">
+<tr><th>Free</th><th>Used / Total</th><th>Max</th><th>as of</th></tr>
+<tr>
+
+ <td class="numbers"><div class="freemem"/>  </td>
+ <td class="numbers"><div class="usedmem"/>&#160;/&#160;<div class="totalmem"/>  </td>
+ <td class="numbers"><div class="maxmem"/>  </td>
+ <td ><div class="memdate"/>  </td>
+</tr>
+<tr>
+<td class="memchart" colspan="4"><div class="flotchart" style="width:100%;height:200px;" /> <div class="checkboxes" /></td>
+</tr>
+
+
+</table>
+</lift:Comet >
+
+</div>
+</lift:children>

@@ -17,7 +17,7 @@ import code.model._
  * A class that's instantiated early and run.  It allows the application
  * to modify lift's environment
  */
-class Boot {
+class Boot  extends LazyLoggable{
   def boot {
     if (!DB.jndiJdbcConnAvailable_?) {
       val vendor = 
@@ -42,7 +42,8 @@ class Boot {
     // Build SiteMap
     def sitemap = SiteMap(
       Menu.i("Home") / "index" >> User.AddUserMenusAfter, // the simple way to declare a menu
-
+          Menu("Clock") / "clock",
+    Menu("Jvm Mem Monitor") / "jvmmem",
       // more complex because this menu allows anything in the
       // /static path to be visible
       Menu(Loc("Static", Link(List("static"), true, "/static/index"), 
@@ -73,5 +74,14 @@ class Boot {
 
     // Make a transaction span the whole HTTP request
     S.addAround(DB.buildLoanWrapper)
+
+    net.liftweb.widgets.flot.Flot.init
+
+    import net.liftweb.http.ResourceServer
+    ResourceServer.allow({
+      case "flot" :: "jquery.flot.resize.js" :: Nil => true
+      case "flot" :: "jquery.flot.7.js" :: Nil => true
+    })
+    logger.info("boot() done!")
   }
 }
