@@ -177,7 +177,7 @@ class JvmMemActor    extends CometActor with Logger{
                  }
 
                  var show_toggle = [ """ +  (for(_ <- 1 to 4) yield true).mkString(",")+ """]  ;
-                 var orig_""" +   datas_var_name + """ =  jQuery.extend( {}, """ +   datas_var_name + """ ) ;\
+                 var orig_""" +   datas_var_name + """ =  jQuery.extend( {}, """ +   datas_var_name + """ ) ;
 
                  function onMemOpClick(b, idx){
                     show_toggle[idx] = b  ;
