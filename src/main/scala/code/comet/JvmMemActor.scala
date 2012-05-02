@@ -19,20 +19,13 @@ import net.liftweb.common.{Box, Logger, Full}
  * To change this template use File | Settings | File Templates.
  */
 
-class JvmMemActor    extends CometActor with Logger{
+class JvmMemActor extends CometActor with Logger with UpdateableSpans{
 
   private val nbsp: Char = 160
   val DATE_FORMAT = "EEE"+nbsp+"MMM"+nbsp+"dd"+nbsp+"HH:mm:ss"
   val throbber = <img src="/images/ajax-loader.gif" style="margin-bottom: 0px; margin-left: 5px" id="ajax-loader" alt="" />
 
-  class UpdateableSpan(val uuid: String){
-     def getSpan(node: scala.xml.Node): scala.xml.Elem = <span id={ uuid } >{ node }</span>
-    def getSpan: scala.xml.Elem = getSpan(Text("..."))//return a placeholder span to be inserted into html on doc creation
-    def setHtml(node: scala.xml.Node)  = partialUpdate(SetHtml(uuid, node))
-    def setHtml(text: String)  = partialUpdate(SetHtml(uuid, <div>{ text }</div>))
-  }
-
-  class MyFlotSerie(val lbl: String, val _color: String) extends net.liftweb.widgets.flot.FlotSerie{
+  class MyFlotSerie(val lbl: String, val _color: String) extends  net.liftweb.widgets.flot.FlotSerie{
     override def label: Box[String] = Full(lbl)
     override def color: Box[Either[String, Int]] = Full(Left(_color) )
   }
