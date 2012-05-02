@@ -154,18 +154,36 @@ class JvmMemActor    extends CometActor with Logger{
 
           partialUpdate(SetHtml(uuid, flot_widget_rendered ))
           //now create the checkboxes.  Can't be created until data_lines is created
-          checkBoxSpanId match{
-            case None =>
-            case Some(cbx_id) =>
-              partialUpdate(SetHtml(cbx_id, joinNodeSeqs(
-                List(<label> {SHtml.ajaxCheckbox (true, { (b: Boolean) =>
+
+          val USE_CLIENT_SIDE = true //use client side javascript alternative
+
+          val legend_checkbox_server_side =  <label> {SHtml.ajaxCheckbox (true, { (b: Boolean) =>
                      val newOptions = new MyFlotOptions{ override def legend = Full(new FlotLegendOptions{ override def show = Full(b)})}
                   //Doesn't work on its own. The options passed into renderFlotShow() are not actually used in its code
 //                         Flot.renderFlotShow ( uuid,   serieToRender, newOptions, Noop)
 
                         net.liftweb.http.js.JsCmds.JsCrVar("options_"+uuid, newOptions.asJsObj) &
                          Flot.renderFlotShow ( uuid, null, null, Noop)
-                  } ) }Legend </label> ) ++
+                  } ) }Legend </label>
+
+           if (USE_CLIENT_SIDE){
+                 val options_var_name = "options_"+uuid
+                 partialUpdate(net.liftweb.http.js.JE.JsRaw(
+                       """function onLgndClick(b){
+                             """+options_var_name+""" = jQuery.extend( """+options_var_name+"""  , { legend: { show: b}}   )
+                             """ + Flot.renderFlotShow ( uuid, null, null, Noop).toJsCmd + """
+                 }"""
+                 ).cmd)
+           }
+
+           val legend_checkbox_client_side =   <label > <input checked="checked" type="checkbox" onclick=" onLgndClick(this.checked)" />
+                     Legend </label>
+
+          checkBoxSpanId match{
+            case None =>
+            case Some(cbx_id) =>
+              partialUpdate(SetHtml(cbx_id, joinNodeSeqs(
+              List(if (USE_CLIENT_SIDE){ legend_checkbox_client_side }else{ legend_checkbox_server_side }) ++
                 memops.zipWithIndex.map{case (name, idx) =>
                 <label> {
                   SHtml.ajaxCheckbox (true, { (b: Boolean) =>
