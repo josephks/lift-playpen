@@ -7,6 +7,7 @@ import net.liftweb.common.{Logger, Full}
 import net.liftweb.http.{CometActor, S, DispatchSnippet, SHtml}
 import net.liftweb.util.{Schedule, Helpers}
 
+import _root_.net.liftweb.util.Helpers._
 import net.liftweb.http.js.JsCmds.{Replace, SetHtml, Noop}
 import net.liftweb.http.js.JsExp
 
@@ -172,25 +173,57 @@ class JvmMemActor    extends CometActor with Logger{
 
   def render = {
     debug("render starting")
-    val cssSelA  = (".memchart" #> getMemChart )       &
-      ".refreshbutton" #> SHtml.ajaxButton ( scala.xml.Text("Refresh All"), () => {
+    val cssSelA  = (".memchart" #> getMemChart )  &
+          ".refreshseconds" #> SHtml.ajaxText("0", (str) => {
+            update_interval = str.toInt
+            this ! "update"
+      })  &
+      ".refreshbutton" #> SHtml.ajaxButton ( scala.xml.Text("Refresh Now"), () => {
         doUpdate
         Noop
       })
     val cssSelB = (cssSelA /: ("memdate" :: memops).map( opname => ("."+opname) #> getSpanFor(opname) ) ){ _ & _ }
     // cssSelB.apply ( node )
-    Schedule.perform(this, UpdateInfo, 100)
+    Schedule.perform(this, "update", 100)
      cssSelB
   }
   def doUpdate(){
-    debug("doUpdate starting")
+    trace("doUpdate starting")
     updateables.foreach( _.doUpdate(new FreeTotalMax) )
-    Schedule.perform(this, UpdateInfo, 5000)
   }
-   override def lowPriority : PartialFunction[Any, Unit] = {
-    case UpdateInfo => {
-      doUpdate()
-    }
+  private var update_interval = 0 //in seconds
+
+  override def lowPriority : PartialFunction[Any, Unit] = {
+//    case UpdateInfo => {
+//      doUpdate()
+    case "update" =>
+      doUpdate
+      if (update_interval > 0)  {
+        //todo: figure out way to do this only if there isn't already an update scheduled, or cancel that one
+        if (false){
+          //old: server side scheduling of next push:
+          Schedule.schedule(this, "update", update_interval * 1000)
+          //I just keep this around in case I need it for debugging purposes
+        }else{
+          //new: client side request for update, to avoid pushing over a bad connection
+          val json_send_jscmd = //jsonSend(net.liftweb.http.js.JE.Num(666))
+            jsonSend("update")
+          trace("json send cmd: "+json_send_jscmd)
+
+import net.liftweb.http.js.JsCmds._
+          partialUpdate( After(update_interval seconds, json_send_jscmd   ))
+          //partialUpdate( After(2500 millis,{jsonSend( net.liftweb.http.js.JE.Num(666)) }) )
+          trace("sent after command")
+        }
+      }
   }
+
+  override def  receiveJson = { //: PartialFunction[JValue, JsCmd] = {
+    case jvalue =>
+      trace("receiveJson(): jvalue: "+jvalue)
+      this ! "update"
+      net.liftweb.http.js.JsCmds.Noop
+  }
+  override def  autoIncludeJsonCode = true
 }
-      case object UpdateInfo
+    //  case object UpdateInfo
