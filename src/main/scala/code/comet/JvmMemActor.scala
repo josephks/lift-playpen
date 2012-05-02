@@ -161,18 +161,34 @@ class JvmMemActor    extends CometActor with Logger{
                      val newOptions = new MyFlotOptions{ override def legend = Full(new FlotLegendOptions{ override def show = Full(b)})}
                   //Doesn't work on its own. The options passed into renderFlotShow() are not actually used in its code
 //                         Flot.renderFlotShow ( uuid,   serieToRender, newOptions, Noop)
-
+                     //Instead set the variable, then call  Flot.renderFlotShow() to redraw
                         net.liftweb.http.js.JsCmds.JsCrVar("options_"+uuid, newOptions.asJsObj) &
                          Flot.renderFlotShow ( uuid, null, null, Noop)
                   } ) }Legend </label>
 
-           if (USE_CLIENT_SIDE){
+           if (USE_CLIENT_SIDE){ //If using client side alternatives declare functions to be used in the onclick="" of the checkboxes
                  val options_var_name = "options_"+uuid
+                 val datas_var_name = "datas_"+uuid    //note: even though it looks like an array it isn't. Is a JavaScript object
+
                  partialUpdate(net.liftweb.http.js.JE.JsRaw(
                        """function onLgndClick(b){
-                             """+options_var_name+""" = jQuery.extend( """+options_var_name+"""  , { legend: { show: b}}   )
+                             """+options_var_name+""" = jQuery.extend( """+options_var_name+"""  , { legend: { show: b}}   ) ;
                              """ + Flot.renderFlotShow ( uuid, null, null, Noop).toJsCmd + """
-                 }"""
+                 }
+
+                 var show_toggle = [ """ +  (for(_ <- 1 to 4) yield true).mkString(",")+ """]  ;
+                 var orig_""" +   datas_var_name + """ =  jQuery.extend( {}, """ +   datas_var_name + """ ) ;\
+
+                 function onMemOpClick(b, idx){
+                    show_toggle[idx] = b  ;
+                     """ +   datas_var_name + """.splice(0) ; //clear array. Works even though isn't really an array. Setting = {} probably works just as well
+                     for(var i = 0; i <  show_toggle.length ; i++){
+                        if (show_toggle[i])
+                             """ +   datas_var_name + """[i] =  orig_""" +   datas_var_name + """[i]  ;
+                     }
+                     """ + Flot.renderFlotShow ( uuid, null, null, Noop).toJsCmd + """
+                 }
+                 """
                  ).cmd)
            }
 
@@ -183,10 +199,16 @@ class JvmMemActor    extends CometActor with Logger{
             case None =>
             case Some(cbx_id) =>
               partialUpdate(SetHtml(cbx_id, joinNodeSeqs(
-              List(if (USE_CLIENT_SIDE){ legend_checkbox_client_side }else{ legend_checkbox_server_side }) ++
+              //join a list of one item (legend toggle checkbox) with a list of checkboxes created from memops
+                List(if (USE_CLIENT_SIDE){ legend_checkbox_client_side }else{ legend_checkbox_server_side }) ++
                 memops.zipWithIndex.map{case (name, idx) =>
+                   if (USE_CLIENT_SIDE){
+                    <label > <input checked="checked" type="checkbox" onclick={" onMemOpClick(this.checked, " + idx+")"} />
+                     { name} </label>
+                   } else { //use original server side method
                 <label> {
                   SHtml.ajaxCheckbox (true, { (b: Boolean) =>
+                      //This makes the line invisible, but still on the plot
 //                    JsFlotSetOps(uuid, data_lines,
 //                             {  val array = Array.fill[List[ (String, JsExp)]](memops.size)(Nil)
 //                              array(idx) = List(("lines.lineWidth", if(b){ 2 }else{ 0 }))
@@ -195,11 +217,10 @@ class JvmMemActor    extends CometActor with Logger{
                      show_toggle(idx) = b
                     //now rerender widget
                      net.liftweb.http.js.JsCmds.JsCrVar("datas_"+uuid, Flot.renderSeries(serieToRender, uuid)) &
-                     Flot.renderFlotShow ( uuid,   serieToRender,
-                           new FlotOptions{}, Noop)
-                  } ) }{ name} </label>  }) ))
+                     Flot.renderFlotShow (uuid, null, null, Noop)
+                  } ) }{ name} </label>  } }) ))
           }//match
-        } //handleFirstDataPoint(
+        } //handleFirstDataPoint()
         def doUpdate(ftm: FreeTotalMax) = {
           if (pointsDone == 0){
              handleFirstDataPoint(ftm)
@@ -260,7 +281,7 @@ class JvmMemActor    extends CometActor with Logger{
             jsonSend("update")
           trace("json send cmd: "+json_send_jscmd)
 
-import net.liftweb.http.js.JsCmds._
+          import net.liftweb.http.js.JsCmds._
           partialUpdate( After(update_interval seconds, json_send_jscmd   ))
           //partialUpdate( After(2500 millis,{jsonSend( net.liftweb.http.js.JE.Num(666)) }) )
           trace("sent after command")
